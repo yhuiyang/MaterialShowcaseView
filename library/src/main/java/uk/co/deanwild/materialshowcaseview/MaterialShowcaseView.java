@@ -3,6 +3,7 @@ package uk.co.deanwild.materialshowcaseview;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -69,7 +70,7 @@ public class MaterialShowcaseView extends FrameLayout implements View.OnTouchLis
     private long mFadeDurationInMillis = ShowcaseConfig.DEFAULT_FADE_TIME;
     private Handler mHandler;
     private long mDelayInMillis = ShowcaseConfig.DEFAULT_DELAY;
-    private int mBottomMargin = 0;
+    private int mBottomOrRightMargin = 0;
     private boolean mSingleUse = false; // should display only once
     private PrefsManager mPrefsManager; // used to store state doe single use mode
     List<IShowcaseListener> mListeners; // external listeners who want to observe when we show and dismiss
@@ -273,11 +274,14 @@ public class MaterialShowcaseView extends FrameLayout implements View.OnTouchLis
              * If we're on lollipop then make sure we don't draw over the nav bar
              */
             if (!mRenderOverNav && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                mBottomMargin = getSoftButtonsBarSizePort((Activity) getContext());
+                mBottomOrRightMargin = getSoftButtonsBarSizePort((Activity) getContext());
                 FrameLayout.LayoutParams contentLP = (LayoutParams) getLayoutParams();
 
-                if (contentLP != null && contentLP.bottomMargin != mBottomMargin)
-                    contentLP.bottomMargin = mBottomMargin;
+                int orientation = mContentBox.getContext().getResources().getConfiguration().orientation;
+                if (contentLP != null && orientation == Configuration.ORIENTATION_PORTRAIT && contentLP.bottomMargin != mBottomOrRightMargin)
+                    contentLP.bottomMargin = mBottomOrRightMargin;
+                else if (contentLP != null && orientation == Configuration.ORIENTATION_LANDSCAPE && contentLP.rightMargin != mBottomOrRightMargin)
+                    contentLP.rightMargin = mBottomOrRightMargin;
             }
 
             // apply the target position
@@ -833,13 +837,14 @@ public class MaterialShowcaseView extends FrameLayout implements View.OnTouchLis
     public static int getSoftButtonsBarSizePort(Activity activity) {
         // getRealMetrics is only available with API 17 and +
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            int orientation = activity.getResources().getConfiguration().orientation;
             DisplayMetrics metrics = new DisplayMetrics();
             activity.getWindowManager().getDefaultDisplay().getMetrics(metrics);
-            int usableHeight = metrics.heightPixels;
+            int usableDimension = orientation == Configuration.ORIENTATION_PORTRAIT ? metrics.heightPixels : metrics.widthPixels;
             activity.getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
-            int realHeight = metrics.heightPixels;
-            if (realHeight > usableHeight)
-                return realHeight - usableHeight;
+            int realDimension = orientation == Configuration.ORIENTATION_PORTRAIT ? metrics.heightPixels : metrics.widthPixels;
+            if (realDimension > usableDimension)
+                return realDimension - usableDimension;
             else
                 return 0;
         }
