@@ -59,8 +59,8 @@ public class MaterialShowcaseView extends FrameLayout implements View.OnTouchLis
     private TextView mContentTextView;
     private TextView mDismissButton;
     private int mGravity;
-    private int mContentBottomMargin;
-    private int mContentTopMargin;
+    private int mContentBottomOrRightMargin;
+    private int mContentTopOrLeftMargin;
     private boolean mDismissOnTouch = false;
     private boolean mShouldRender = false; // flag to decide when we should actually render
     private boolean mRenderOverNav = false;
@@ -273,11 +273,11 @@ public class MaterialShowcaseView extends FrameLayout implements View.OnTouchLis
             /**
              * If we're on lollipop then make sure we don't draw over the nav bar
              */
+            int orientation = mContentBox.getResources().getConfiguration().orientation;
             if (!mRenderOverNav && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 mBottomOrRightMargin = getSoftButtonsBarSizePort((Activity) getContext());
                 FrameLayout.LayoutParams contentLP = (LayoutParams) getLayoutParams();
 
-                int orientation = mContentBox.getContext().getResources().getConfiguration().orientation;
                 if (contentLP != null && orientation == Configuration.ORIENTATION_PORTRAIT && contentLP.bottomMargin != mBottomOrRightMargin)
                     contentLP.bottomMargin = mBottomOrRightMargin;
                 else if (contentLP != null && orientation == Configuration.ORIENTATION_LANDSCAPE && contentLP.rightMargin != mBottomOrRightMargin)
@@ -289,27 +289,53 @@ public class MaterialShowcaseView extends FrameLayout implements View.OnTouchLis
             Rect targetBounds = mTarget.getBounds();
             setPosition(targetPoint);
 
-            // now figure out whether to put content above or below it
-            int height = getMeasuredHeight();
-            int midPoint = height / 2;
-            int yPos = targetPoint.y;
-
+            int midPoint;
             int radius = Math.max(targetBounds.height(), targetBounds.width()) / 2;
-            if (mShape != null) {
-                mShape.updateTarget(mTarget);
-                radius = mShape.getHeight() / 2;
-            }
 
-            if (yPos > midPoint) {
-                // target is in lower half of screen, we'll sit above it
-                mContentTopMargin = 0;
-                mContentBottomMargin = (height - yPos) + radius + mShapePadding;
-                mGravity = Gravity.BOTTOM;
+            if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                // now figure out whether to put content left or right it
+                int width = getMeasuredWidth();
+                midPoint = width / 2;
+                int xPos = targetPoint.x;
+
+                if (mShape != null) {
+                    mShape.updateTarget(mTarget);
+                    radius = mShape.getWidth() / 2;
+                }
+
+                if (xPos > midPoint) {
+                    // target is in right half of screen, we'll sit left side
+                    mContentTopOrLeftMargin = 0;
+                    mContentBottomOrRightMargin = (width - xPos) + radius + mShapePadding;
+                    mGravity = Gravity.RIGHT;
+                } else {
+                    // target is in left half of screen, we'll sit right side
+                    mContentTopOrLeftMargin = xPos + radius + mShapePadding;
+                    mContentBottomOrRightMargin = 0;
+                    mGravity = Gravity.LEFT;
+                }
             } else {
-                // target is in upper half of screen, we'll sit below it
-                mContentTopMargin = yPos + radius + mShapePadding;
-                mContentBottomMargin = 0;
-                mGravity = Gravity.TOP;
+                // now figure out whether to put content above or below it
+                int height = getMeasuredHeight();
+                midPoint = height / 2;
+                int yPos = targetPoint.y;
+
+                if (mShape != null) {
+                    mShape.updateTarget(mTarget);
+                    radius = mShape.getHeight() / 2;
+                }
+
+                if (yPos > midPoint) {
+                    // target is in lower half of screen, we'll sit above it
+                    mContentTopOrLeftMargin = 0;
+                    mContentBottomOrRightMargin = (height - yPos) + radius + mShapePadding;
+                    mGravity = Gravity.BOTTOM;
+                } else {
+                    // target is in upper half of screen, we'll sit below it
+                    mContentTopOrLeftMargin = yPos + radius + mShapePadding;
+                    mContentBottomOrRightMargin = 0;
+                    mGravity = Gravity.TOP;
+                }
             }
         }
 
@@ -321,16 +347,29 @@ public class MaterialShowcaseView extends FrameLayout implements View.OnTouchLis
         if (mContentBox != null && mContentBox.getLayoutParams() != null) {
             FrameLayout.LayoutParams contentLP = (LayoutParams) mContentBox.getLayoutParams();
 
+            int orientation = mContentBox.getResources().getConfiguration().orientation;
             boolean layoutParamsChanged = false;
 
-            if (contentLP.bottomMargin != mContentBottomMargin) {
-                contentLP.bottomMargin = mContentBottomMargin;
-                layoutParamsChanged = true;
-            }
+            if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                if (contentLP.rightMargin != mContentBottomOrRightMargin) {
+                    contentLP.rightMargin = mContentBottomOrRightMargin;
+                    layoutParamsChanged = true;
+                }
 
-            if (contentLP.topMargin != mContentTopMargin) {
-                contentLP.topMargin = mContentTopMargin;
-                layoutParamsChanged = true;
+                if (contentLP.leftMargin != mContentTopOrLeftMargin) {
+                    contentLP.leftMargin = mContentTopOrLeftMargin;
+                    layoutParamsChanged = true;
+                }
+            } else {
+                if (contentLP.bottomMargin != mContentBottomOrRightMargin) {
+                    contentLP.bottomMargin = mContentBottomOrRightMargin;
+                    layoutParamsChanged = true;
+                }
+
+                if (contentLP.topMargin != mContentTopOrLeftMargin) {
+                    contentLP.topMargin = mContentTopOrLeftMargin;
+                    layoutParamsChanged = true;
+                }
             }
 
             if (contentLP.gravity != mGravity) {
